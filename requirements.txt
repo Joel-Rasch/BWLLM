@@ -1,8 +1,5 @@
-streamlit==1.28.1
-langchain==0.0.340
-langchain-openai==0.0.2
-langchain-community==0.0.10
-chromadb==0.4.15
-python-dotenv==1.0.0
-PyPDF2==3.0.1
-tiktoken==0.5.1
+scikit-learn
+langchain-community
+faiss-cpu
+sentence-transformers
+streamlit
