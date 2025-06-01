@@ -1,5 +1,6 @@
-scikit-learn
-langchain-community
-faiss-cpu
-sentence-transformers
-streamlit
+scikit-learn==1.6.1
+langchain-community==0.3.23
+langchain-google-genai==2.1.5
+faiss-cpu==1.11.0
+sentence-transformers==4.1.0
+streamlit==1.45.1
