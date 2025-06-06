@@ -1,164 +1,112 @@
-import os
-import streamlit as st
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain.vectorstores import Chroma
-from langchain.chains import RetrievalQA
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate
-from config import config
+### Code for the Rag to return a rag anser, based on a question
 
-class SimpleRAGSystem:
-    def __init__(self):
-        self.embeddings = None
-        self.vector_store = None
-        self.qa_chain = None
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=config.CHUNK_SIZE,
-            chunk_overlap=config.CHUNK_OVERLAP,
-            length_function=len
-        )
+# Import necessary classes from langchain
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage
+from typing import Optional
+import os
+# importing necessary functions from dotenv library
+from dotenv import load_dotenv, dotenv_values 
+
+
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import FAISS
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.schema import Document
+from langchain.vectorstores import FAISS
+from langchain.embeddings import HuggingFaceEmbeddings
+
+
+def create_faiss_index(data, index_path="faiss_index", model_name="sentence-transformers/all-MiniLM-L6-v2", chunk_size=500, chunk_overlap=100):
+    """
+    Erstellt und speichert einen FAISS-Index aus einer Liste von Textdaten.
     
-    @st.cache_resource
-    def initialize(_self):
-        """Initialize the RAG system (cached for performance)"""
-        if not config.GOOGLE_API_KEY: # Ensure your config.py loads GOOGLE_API_KEY
-            st.error("Google API Key fehlt! Bitte in .env Datei eintragen und config.py anpassen.")
-            return False
-        
-        try:
-            # Initialize embeddings
-            _self.embeddings = GoogleGenerativeAIEmbeddings(
-                model="models/embedding-001", # Standard Gemini embedding model
-                google_api_key=config.GOOGLE_API_KEY
-            )
-            
-            # Check if vector store exists
-            # The vector store (Chroma) will work with the new embeddings
-            if os.path.exists(config.VECTOR_DB_PATH):
-                st.info("Lade existierende Vektordatenbank...")
-                _self.vector_store = Chroma(
-                    persist_directory=config.VECTOR_DB_PATH,
-                    embedding_function=_self.embeddings
-                )
-            else:
-                st.info("Erstelle neue Vektordatenbank aus PDF-Korpus...")
-                _self._create_vector_store()
-            
-            # Initialize QA chain
-            _self._create_qa_chain()
-            
-            return True
-            
-        except Exception as e:
-            st.error(f"Fehler bei der Initialisierung: {str(e)}")
-            return False
+    Args:
+        data (list of str): Die zu verarbeitenden Dokumente als Strings.
+        index_path (str): Speicherort für den FAISS-Index.
+        model_name (str): HuggingFace-Modellname für das Embedding.
+        chunk_size (int): Größe der Text-Chunks.
+        chunk_overlap (int): Überlappung zwischen Chunks.
+    """
+
+    # Dokument-ID-Zuordnung
+    texts = {f"doc_{i}": text for i, text in enumerate(data)}
+
+    # Text splitter konfigurieren
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", ".", " ", ""]
+    )
+
+    # Texte in Chunks aufteilen mit Metadaten
+    documents = []
+    for doc_id, text in texts.items():
+        chunks = text_splitter.split_text(text)
+        for i, chunk in enumerate(chunks):
+            documents.append(Document(
+                page_content=chunk,
+                metadata={"source": doc_id, "chunk": i}
+            ))
+
+    # Embeddings vorbereiten
+    embeddings = HuggingFaceEmbeddings(model_name=model_name)
+
+    # FAISS-Index erstellen
+    faiss_index = FAISS.from_documents(documents, embedding=embeddings)
+
+    # Lokal speichern
+    faiss_index.save_local(index_path)
+
+    print(f"✅ FAISS-Index erfolgreich unter '{index_path}' gespeichert.")
+
+def query_faiss_index(query, index_path="faiss_index", model_name="sentence-transformers/all-MiniLM-L6-v2", k=3):
+    """
+    Lädt einen FAISS-Index und gibt die Top-k relevantesten Text-Chunks als Liste von Strings zurück.
+
+    Args:
+        query (str): Die Suchanfrage in natürlicher Sprache.
+        index_path (str): Pfad zum gespeicherten FAISS-Index.
+        model_name (str): HuggingFace-Modellname für das Embedding.
+        k (int): Anzahl der zurückzugebenden ähnlichen Ergebnisse.
+
+    Returns:
+        list of str: Liste der gefundenen Text-Chunks.
+    """
+
+    # Embeddings laden
+    embeddings = HuggingFaceEmbeddings(model_name=model_name)
+
+    # FAISS-Index laden
+    faiss_index = FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
+
+    # Ähnliche Dokumente suchen
+    results = faiss_index.similarity_search(query, k=k)
+
+    # Nur den Text extrahieren
+    return [result.page_content for result in results]
+
+def rag(question: Optional[str] = '', chat_history: Optional[str] = '', context: Optional[str] = '') -> str:
+    load_dotenv() 
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=1,max_tokens=None,google_api_key=os.getenv("GOOGLE_API_KEY"))
+
+    prompt = f"""You are an expert chat assistance that extracs information from the CONTEXT provided
+           between <context> and </context> tags.
+           When ansering the question contained between <question> and </question> tags
+           be concise and do not hallucinate. 
+           If you don't have the information just say so.
+           Only anwer the question if you can extract it from the CONTEXT provideed.
+           
+           Do not mention the CONTEXT used in your answer.
     
-    def _create_vector_store(self):
-        """Create vector store from PDF corpus"""
-        documents = []
-        
-        # Check if PDF folder exists
-        if not os.path.exists(config.PDF_FOLDER):
-            os.makedirs(config.PDF_FOLDER)
-            st.warning(f"PDF-Ordner '{config.PDF_FOLDER}' wurde erstellt. Bitte PDFs hinzufügen und App neu starten.")
-            return
-        
-        # Load all PDFs
-        pdf_files = [f for f in os.listdir(config.PDF_FOLDER) if f.endswith('.pdf')]
-        
-        if not pdf_files:
-            st.warning(f"Keine PDF-Dateien in '{config.PDF_FOLDER}' gefunden!")
-            return
-        
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        
-        for i, pdf_file in enumerate(pdf_files):
-            status_text.text(f"Verarbeite: {pdf_file}")
-            
-            try:
-                pdf_path = os.path.join(config.PDF_FOLDER, pdf_file)
-                loader = PyPDFLoader(pdf_path)
-                pages = loader.load()
-                
-                # Split documents
-                chunks = self.text_splitter.split_documents(pages)
-                
-                # Add metadata
-                for chunk in chunks:
-                    chunk.metadata['source'] = pdf_file
-                
-                documents.extend(chunks)
-                
-            except Exception as e:
-                st.warning(f"Fehler beim Laden von {pdf_file}: {str(e)}")
-            
-            progress_bar.progress((i + 1) / len(pdf_files))
-        
-        if documents:
-            # Create vector store
-            self.vector_store = Chroma.from_documents(
-                documents=documents,
-                embedding=self.embeddings,
-                persist_directory=config.VECTOR_DB_PATH
-            )
-            self.vector_store.persist()
-            st.success(f"Vektordatenbank erstellt mit {len(documents)} Dokumentenabschnitten!")
-        else:
-            st.error("Keine Dokumente verarbeitet!")
-    
-    def _create_qa_chain(self):
-        """Create QA chain"""
-        if not self.vector_store:
-            return
-        
-        # Custom prompt template
-        template = """Nutze den folgenden Kontext, um die Frage zu beantworten. 
-        Wenn du die Antwort nicht aus dem Kontext ableiten kannst, sage ehrlich dass du es nicht weißt.
-        Gib konkrete, hilfreiche Antworten basierend auf den bereitgestellten Dokumenten.
-        
-        Kontext: {context}
-        
-        Frage: {question}
-        
-        Antwort:"""
-        
-        prompt = PromptTemplate(
-            template=template,
-            input_variables=["context", "question"]
-        )
-        
-        # Initialize LLM
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-pro", # Or another Gemini model like "gemini-1.5-pro-latest"
-            google_api_key=config.GOOGLE_API_KEY,
-            temperature=0.3,  # Lower temperature for more focused answers
-            convert_system_message_to_human=True # Often helpful for chat models in chains
-        )
-        
-        # Create QA chain
-        self.qa_chain = RetrievalQA.from_chain_type(
-            llm=llm,
-            chain_type="stuff",
-            retriever=self.vector_store.as_retriever(search_kwargs={"k": 4}),
-            chain_type_kwargs={"prompt": prompt},
-            return_source_documents=True
-        )
-    
-    def query(self, question: str):
-        """Query the RAG system"""
-        if not self.qa_chain:
-            return None, []
-        
-        try:
-            result = self.qa_chain({"query": question})
-            answer = result['result']
-            sources = [doc.metadata.get('source', 'Unbekannt') for doc in result['source_documents']]
-            return answer, list(set(sources))  # Remove duplicates
-            
-        except Exception as e:
-            st.error(f"Fehler bei der Abfrage: {str(e)}")
-            return None, []
-        
-    
+           <context>          
+           {context}
+           </context>
+           <question>  
+           {question}
+           </question>
+           Answer: """
+
+    response = llm.invoke([HumanMessage(content=prompt)])
+    return response
+
