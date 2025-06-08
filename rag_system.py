@@ -8,57 +8,9 @@ import os
 # importing necessary functions from dotenv library
 from dotenv import load_dotenv, dotenv_values 
 
-
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
-from langchain.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
-
-
-def create_faiss_index(data, index_path="faiss_index", model_name="sentence-transformers/all-MiniLM-L6-v2", chunk_size=500, chunk_overlap=100):
-    """
-    Erstellt und speichert einen FAISS-Index aus einer Liste von Textdaten.
-    
-    Args:
-        data (list of str): Die zu verarbeitenden Dokumente als Strings.
-        index_path (str): Speicherort für den FAISS-Index.
-        model_name (str): HuggingFace-Modellname für das Embedding.
-        chunk_size (int): Größe der Text-Chunks.
-        chunk_overlap (int): Überlappung zwischen Chunks.
-    """
-
-    # Dokument-ID-Zuordnung
-    texts = {f"doc_{i}": text for i, text in enumerate(data)}
-
-    # Text splitter konfigurieren
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        separators=["\n\n", "\n", ".", " ", ""]
-    )
-
-    # Texte in Chunks aufteilen mit Metadaten
-    documents = []
-    for doc_id, text in texts.items():
-        chunks = text_splitter.split_text(text)
-        for i, chunk in enumerate(chunks):
-            documents.append(Document(
-                page_content=chunk,
-                metadata={"source": doc_id, "chunk": i}
-            ))
-
-    # Embeddings vorbereiten
-    embeddings = HuggingFaceEmbeddings(model_name=model_name)
-
-    # FAISS-Index erstellen
-    faiss_index = FAISS.from_documents(documents, embedding=embeddings)
-
-    # Lokal speichern
-    faiss_index.save_local(index_path)
-
-    print(f"✅ FAISS-Index erfolgreich unter '{index_path}' gespeichert.")
 
 def query_faiss_index(query, index_path="faiss_index", model_name="sentence-transformers/all-MiniLM-L6-v2", k=3):
     """
