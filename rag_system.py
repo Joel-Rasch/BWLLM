@@ -13,18 +13,6 @@ from langchain.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 
 def query_faiss_index(query, index_path="faiss_index", model_name="sentence-transformers/all-MiniLM-L6-v2", k=3):
-    """
-    Lädt einen FAISS-Index und gibt die Top-k relevantesten Text-Chunks als Liste von Strings zurück.
-
-    Args:
-        query (str): Die Suchanfrage in natürlicher Sprache.
-        index_path (str): Pfad zum gespeicherten FAISS-Index.
-        model_name (str): HuggingFace-Modellname für das Embedding.
-        k (int): Anzahl der zurückzugebenden ähnlichen Ergebnisse.
-
-    Returns:
-        list of str: Liste der gefundenen Text-Chunks.
-    """
 
     # Embeddings laden
     embeddings = HuggingFaceEmbeddings(model_name=model_name)
