@@ -175,4 +175,4 @@ cython_debug/
 .pypirc
 
 # faiss db
-faiss_index
+faiss_index/

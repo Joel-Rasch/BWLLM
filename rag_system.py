@@ -26,9 +26,11 @@ def query_faiss_index(query, index_path="faiss_index", model_name="sentence-tran
     # Nur den Text extrahieren
     return [result.page_content for result in results]
 
-def rag(question: Optional[str] = '', chat_history: Optional[str] = '', context: Optional[str] = '') -> str:
+def rag(question: Optional[str] = '', chat_history: Optional[str] = '') -> str:
     load_dotenv() 
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=1,max_tokens=None,google_api_key=os.getenv("GOOGLE_API_KEY"))
+
+    context = query_faiss_index(question)
 
     prompt = f"""You are an expert chat assistance that extracs information from the CONTEXT provided
            between <context> and </context> tags.
