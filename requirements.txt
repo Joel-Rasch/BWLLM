@@ -3,4 +3,6 @@ langchain-community==0.3.23
 langchain-google-genai==2.1.5
 faiss-cpu==1.11.0
 sentence-transformers==4.1.0
-streamlit==1.45.1
+streamlit==1.40.0
+unstructured[pdf]
+markdownify==0.14.0
