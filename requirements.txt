@@ -1,6 +1,14 @@
-scikit-learn==1.6.1
-langchain-community==0.3.23
-langchain-google-genai==2.1.5
-faiss-cpu==1.11.0
-sentence-transformers==4.1.0
-streamlit==1.45.1
+# Core dependencies for table enrichment
+google-generativeai==0.3.2
+unstructured[pdf]==0.11.2
+markdownify==0.11.6
+python-dotenv==1.0.0
+
+# Vector database dependencies (Local file-based)
+pymilvus==2.3.4
+sentence-transformers==2.2.2
+numpy==1.24.3
+tiktoken==0.5.1
+
+# Original RAG dependencies (keep for existing workflow)
+faiss-cpu==1.7.4
