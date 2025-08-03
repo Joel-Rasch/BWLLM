@@ -5,7 +5,8 @@ __pycache__/
 
 # C extensions
 *.so
-
+*.claude/*
+*settings.local.json*
 # Distribution / packaging
 .Python
 build/
@@ -54,6 +55,8 @@ cover/
 # Translations
 *.mo
 *.pot
+*.pkl
+*.bin
 
 # Django stuff:
 *.log
@@ -67,6 +70,7 @@ instance/
 
 # Scrapy stuff:
 .scrapy
+Claude.md
 
 # Sphinx documentation
 docs/_build/

@@ -1,14 +1,56 @@
-# Core dependencies for table enrichment
-google-generativeai==0.3.2
-unstructured[pdf]==0.11.2
-markdownify==0.11.6
-python-dotenv==1.0.0
+# Core dependencies for table enrichment and error handling
+google-generativeai>=0.8.3
+google-api-core>=2.15.0
+langchain>=0.3.7
+langchain-community>=0.3.5
+langchain-text-splitters>=0.3.2
+langchain-core>=0.3.15
+markdownify>=0.13.1
+python-dotenv>=1.0.1
 
-# Vector database dependencies (Local file-based)
-pymilvus==2.3.4
-sentence-transformers==2.2.2
-numpy==1.24.3
-tiktoken==0.5.1
+# Unstructured dependencies (compatible versions)
+unstructured[pdf]==0.16.11
+unstructured-client==0.27.0
+unstructured-inference==0.7.36
+unstructured-ingest==0.3.1
+unstructured.pytesseract==0.3.13
 
-# Original RAG dependencies (keep for existing workflow)
-faiss-cpu==1.7.4
+# Vector database and embeddings
+sentence-transformers>=3.3.0
+numpy>=1.24.0,<2.0.0
+tiktoken>=0.8.0
+faiss-cpu>=1.8.0
+
+# PDF processing dependencies
+pdf2image==1.17.0
+pdfminer.six==20231228
+pdfplumber==0.11.4
+pikepdf==9.4.2
+pillow==11.0.0
+PyMuPDF==1.25.5
+pypdf==5.1.0
+
+# Additional common dependencies that may be needed
+transformers>=4.36.0
+torch>=2.0.0
+huggingface-hub>=0.20.0
+typing-extensions>=4.8.0
+pydantic>=2.5.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Streamlit app dependencies
+streamlit>=1.28.0
+plotly>=5.17.0
+pandas>=2.0.0
+
+# Key dependencies explained:
+# - google-generativeai: For AI table enrichment with Gemini
+# - google-api-core: For improved error handling and retries
+# - sentence-transformers: For text embeddings
+# - faiss-cpu: For vector similarity search
+# - unstructured: For PDF content extraction
+# - langchain: For text processing and chunking
+# - streamlit: For web interface
+# - python-dotenv: For environment variable management
