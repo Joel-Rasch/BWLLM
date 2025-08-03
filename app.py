@@ -268,7 +268,7 @@ def display_query_results(result: Dict[str, Any], use_expanders: bool = True):
             score = source.get('score', 0.0)
             chunk_type = source.get('chunk_type', 'text')
             source_file = source.get('source_file', 'Unbekannt')
-            content_preview = source.get('content_preview', source.get('content', 'Kein Inhalt verfügbar')[:200])
+            content_preview = source.get('content_preview', source.get('content', 'Kein Inhalt verfügbar'))
             
             if use_expanders:
                 with st.expander(f"Quelle {i}: {company} ({year}) - Score: {score:.3f}"):

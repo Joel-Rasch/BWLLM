@@ -3,6 +3,7 @@ import json
 import logging
 from typing import List, Dict, Any, Tuple
 from pathlib import Path
+from datetime import datetime
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
@@ -188,36 +189,67 @@ def process_pdf_content(content_list: List[Dict], filename: str) -> List[Dict[st
     return chunks
 
 
-def chunk_document(file_path: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[Dict[str, Any]]:
+def chunk_document(file_path: str, chunk_size: int = 1000, chunk_overlap: int = 200, 
+                  create_validation_md: bool = True) -> List[Dict[str, Any]]:
     """
     Main function to chunk a document (PDF or markdown)
+    
+    Args:
+        file_path: Path to the document
+        chunk_size: Size of text chunks
+        chunk_overlap: Overlap between chunks
+        create_validation_md: Whether to create markdown validation file
     """
     file_path = Path(file_path)
+    logger = logging.getLogger(__name__)
     
     if file_path.suffix.lower() == '.pdf':
         from src.processing.table_extractor import extract_content_from_pdf
         content_list = extract_content_from_pdf(str(file_path))
+        
+        # Create validation markdown if requested
+        if create_validation_md:
+            md_path = save_extraction_as_markdown(content_list, file_path.name)
+            if md_path:
+                logger.info(f"Created validation markdown: {md_path}")
+        
         return process_pdf_content(content_list, file_path.name)
     
     elif file_path.suffix.lower() in ['.md', '.markdown']:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
+        
+        # For markdown files, we'll create a simplified content list for validation
+        if create_validation_md:
+            sections = split_content_by_tables(content)
+            content_list = [{'content': section['content'], 'type': section['type']} for section in sections]
+            md_path = save_extraction_as_markdown(content_list, file_path.name)
+            if md_path:
+                logger.info(f"Created validation markdown: {md_path}")
+        
         return process_markdown_content(content, file_path.name)
     
     else:
         raise ValueError(f"Unsupported file format: {file_path.suffix}")
 
 
-def batch_chunk_documents(file_paths: List[str], chunk_size: int = 1000, chunk_overlap: int = 200) -> List[Dict[str, Any]]:
+def batch_chunk_documents(file_paths: List[str], chunk_size: int = 1000, chunk_overlap: int = 200, 
+                         create_validation_md: bool = True) -> List[Dict[str, Any]]:
     """
     Process multiple documents into chunks
+    
+    Args:
+        file_paths: List of file paths to process
+        chunk_size: Size of text chunks
+        chunk_overlap: Overlap between chunks
+        create_validation_md: Whether to create markdown validation files
     """
     all_chunks = []
     logger = logging.getLogger(__name__)
     
     for file_path in file_paths:
         try:
-            chunks = chunk_document(file_path, chunk_size, chunk_overlap)
+            chunks = chunk_document(file_path, chunk_size, chunk_overlap, create_validation_md)
             all_chunks.extend(chunks)
             logger.info(f"Successfully processed {file_path}: {len(chunks)} chunks")
         except Exception as e:
@@ -225,6 +257,100 @@ def batch_chunk_documents(file_paths: List[str], chunk_size: int = 1000, chunk_o
     
     logger.info(f"Total chunks processed: {len(all_chunks)}")
     return all_chunks
+
+
+def save_extraction_as_markdown(content_list: List[Dict], filename: str, output_dir: str = "validation_md") -> str:
+    """
+    Save extracted content as a markdown file for validation
+    
+    Args:
+        content_list: List of extracted content items
+        filename: Original filename
+        output_dir: Directory to save markdown files
+    
+    Returns:
+        Path to the created markdown file
+    """
+    logger = logging.getLogger(__name__)
+    
+    # Create output directory
+    output_path = Path(output_dir)
+    output_path.mkdir(exist_ok=True)
+    
+    # Generate markdown filename
+    base_name = Path(filename).stem
+    md_filename = f"{base_name}_extraction_validation.md"
+    md_path = output_path / md_filename
+    
+    company, year = extract_company_and_year_from_filename(filename)
+    
+    # Generate markdown content
+    md_content = f"""# Extraction Validation: {company} {year}
+
+**Source File:** {filename}  
+**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  
+**Total Elements:** {len(content_list)}  
+
+---
+
+"""
+    
+    # Add content sections
+    table_count = sum(1 for item in content_list if item['type'] == 'table')
+    text_count = sum(1 for item in content_list if item['type'] == 'text')
+    
+    md_content += f"""## Summary
+
+- **Tables:** {table_count}
+- **Text Elements:** {text_count}
+- **Company:** {company}
+- **Year:** {year}
+
+---
+
+## Extracted Content
+
+"""
+    
+    for i, item in enumerate(content_list, 1):
+        content_type = item['type'].upper()
+        page_info = f" (Page {item.get('page_number', 'Unknown')})" if item.get('page_number') else ""
+        
+        md_content += f"""### Element {i}: {content_type}{page_info}
+
+"""
+        
+        if item['type'] == 'table':
+            md_content += f"""**Type:** Table  
+**Characters:** {len(item['content'])}  
+
+{item['content']}
+
+---
+
+"""
+        else:
+            content_preview = item['content'][:500] + "..." if len(item['content']) > 500 else item['content']
+            md_content += f"""**Type:** Text  
+**Characters:** {len(item['content'])}  
+
+{content_preview}
+
+---
+
+"""
+    
+    # Write to file
+    try:
+        with open(md_path, 'w', encoding='utf-8') as f:
+            f.write(md_content)
+        
+        logger.info(f"Validation markdown saved to: {md_path.absolute()}")
+        return str(md_path.absolute())
+        
+    except Exception as e:
+        logger.error(f"Failed to save validation markdown: {e}")
+        return None
 
 
 def save_chunks_for_inspection(chunks: List[Dict[str, Any]], output_file: str = "processed_chunks_inspection.json"):
