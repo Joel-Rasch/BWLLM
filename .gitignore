@@ -177,4 +177,3 @@ cython_debug/
 # faiss db
 faiss_index/
 faiss_index_bmw/
-data/
