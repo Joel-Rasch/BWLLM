@@ -38,7 +38,8 @@ def process_query(query, index_path="faiss_index", model_name="sentence-transfor
         }
 
     # Bereinigte Query über extract_key_entities
-    cleaned_query = extract_key_entities(query)
+    cleaned_query = query
+    #cleaned_query = delete_stopwords(query)
 
     # Alle bekannten Firmennamen aus cleaned_query entfernen (case-insensitive, als ganze Wörter)
     for company in known_companies:
