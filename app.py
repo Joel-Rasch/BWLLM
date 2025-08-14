@@ -1,42 +1,67 @@
 import streamlit as st
-import rag_system
+from rag_system import query_faiss_index, rag, process_query
+import variable_loader as loader
+loader.load_variables()
 
 def get_rag_response(query):
-    # This is a placeholder function that will be replaced with actual RAG implementation
-    answer = rag_system.rag(query)
-    return answer
+    # Top-k Dokumente aus dem Kontext abrufen
+    matched_companies, query_cleaned = process_query(query)
+    context = query_faiss_index(query_cleaned, matched_companies)
+    # Antwort mittels RAG-Pipeline generieren
+    answer = rag(question=query).content
+    return answer, context
 
-def main():
+
+def rag_chatbot():
     st.title("RAG Chatbot")
-    st.write("Ask me anything! (Currently using placeholder responses)")
 
-    # Initialize chat history
+    # Chat-Verlauf initialisieren
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Display chat history
+    # Chat-Verlauf anzeigen
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # User input
-    if prompt := st.chat_input("What would you like to know?"):
-        # Add user message to chat history
+    # Benutzereingabe
+    if prompt := st.chat_input("Was möchten Sie wissen?"):
+        # Nachricht zum Chat-Verlauf hinzufügen
         st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # Display user message
+        # Benutzernachricht anzeigen
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Get response from RAG (currently placeholder)
-        response = get_rag_response(prompt)
+        # Antwort und Kontext von RAG abrufen
+        response, context = get_rag_response(prompt)
 
-        # Display assistant response
+        # Assistenten-Antwort anzeigen
         with st.chat_message("assistant"):
             st.markdown(response)
+            # Ausklappbaren Kontextbereich hinzufügen
+            with st.expander("🔍 Kontext Anschauen"):
+                st.markdown(f"**Kontext:**\n{context}")
 
-        # Add assistant response to chat history
+        # Assistenten-Antwort zum Chat-Verlauf hinzufügen (ohne Kontext)
         st.session_state.messages.append({"role": "assistant", "content": response})
 
-if __name__ == "__main__":
-    main()
+
+def dummy_page():
+    st.title("Testseite")
+    query = st.text_input("Geben Sie Ihre Suchanfrage ein:", "")
+    if query:
+        matched_companies, query_cleaned = process_query(query)
+        results = query_faiss_index(query_cleaned, matched_companies)
+        st.markdown("### Ergebnisse:")
+        st.markdown(f"**Ergebnis:** {results}")
+
+
+# Seitennavigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Seite auswählen", ["RAG Chatbot", "Testseite"])
+
+if page == "RAG Chatbot":
+    rag_chatbot()
+elif page == "Testseite":
+    dummy_page()

@@ -7,7 +7,7 @@ from langchain.vectorstores import FAISS
 
 from typing import Optional
 from dotenv import load_dotenv
-from extract_entities import extract_key_entities, delete_stopwords
+#from extract_entities import extract_key_entities, delete_stopwords
 import variable_loader as loader
 
 def process_query(query):
@@ -69,7 +69,7 @@ def query_faiss_index(query, companies, k=5):
 
     return all_results if all_results else None
 
-def rag(question: Optional[str] = '', chat_history: Optional[str] = '') -> str:
+def rag(question: Optional[str] = '', chat_history: Optional[str] = ''):
 
     load_dotenv()
 
