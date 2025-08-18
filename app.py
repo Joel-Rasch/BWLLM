@@ -41,7 +41,13 @@ def rag_chatbot():
             st.markdown(response)
             # Ausklappbaren Kontextbereich hinzufügen
             with st.expander("🔍 Kontext Anschauen"):
-                st.markdown(f"**Kontext:**\n{context}")
+                st.markdown("### Kontext")
+                for i, doc in enumerate(context, start=1):
+                    st.markdown(f"**{i}. Dokument**")
+                    st.markdown(f"- **ID:** `{doc.id}`")
+                    st.markdown(f"- **Metadata:** `{doc.metadata}`")
+                    st.markdown(f"- **Content:** {doc.page_content}")
+                    st.markdown("---")
 
         # Assistenten-Antwort zum Chat-Verlauf hinzufügen (ohne Kontext)
         st.session_state.messages.append({"role": "assistant", "content": response})

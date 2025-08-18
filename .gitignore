@@ -173,7 +173,3 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-
-# faiss db
-faiss_index/
-faiss_index_bmw/
