@@ -19,7 +19,7 @@ Ein Retrieval-Augmented Generation (RAG) Chatbot-System zur Analyse deutscher Fi
 
 ### 1. Repository klonen
 ```bash
-git clone <repository-url>
+git clone https://github.com/Joel-Rasch/BWLLM
 cd rag-chatbot
 ```
 
